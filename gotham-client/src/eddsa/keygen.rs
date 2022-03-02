@@ -7,30 +7,27 @@
 // version 3 of the License, or (at your option) any later version.
 //
 
-use super::super::utilities::requests;
-use super::super::Result;
-use crate::ClientShim;
-
-use two_party_musig2_eddsa::{KeyPair, AggPublicKeyAndMusigCoeff};
-
+use two_party_musig2_eddsa::{AggPublicKeyAndMusigCoeff, KeyPair};
 // iOS bindings
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
+use crate::{utilities::requests, ClientShim, Result};
+
 /// Generate a keypair for 2-party Ed25519 signing
-pub fn generate_key(client_shim: &ClientShim) -> Result<(KeyPair, AggPublicKeyAndMusigCoeff, String)> {
+pub fn generate_key(
+    client_shim: &ClientShim,
+) -> Result<(KeyPair, AggPublicKeyAndMusigCoeff, String)> {
     let (client_key_pair, _) = KeyPair::create();
-    
+
     // Send public key to server and receive its public key
-    let (id, server_pubkey): (String, [u8; 32]) = requests::postb(
-        client_shim,
-        "eddsa/keygen",
-        &client_key_pair.pubkey())
-        .unwrap();
-    
+    let (id, server_pubkey): (String, [u8; 32]) =
+        requests::postb(client_shim, "eddsa/keygen", &client_key_pair.pubkey()).unwrap();
+
     // Compute aggregated pubkey and a "musig coefficient" used later for signing - fails if received invalid pubkey!
-    let agg_pubkey = AggPublicKeyAndMusigCoeff::aggregate_public_keys(client_key_pair.pubkey(), server_pubkey);
-    
+    let agg_pubkey =
+        AggPublicKeyAndMusigCoeff::aggregate_public_keys(client_key_pair.pubkey(), server_pubkey);
+
     match agg_pubkey {
         Ok(agg_pubkey) => Ok((client_key_pair, agg_pubkey, id)),
         Err(e) => Err(e.into()),
@@ -66,7 +63,5 @@ pub extern "C" fn generate_client_key(
         Err(_) => panic!("Error while encoding key"),
     };
 
-    CString::new(key_json)
-        .unwrap()
-        .into_raw()
+    CString::new(key_json).unwrap().into_raw()
 }

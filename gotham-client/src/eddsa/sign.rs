@@ -7,18 +7,18 @@
 // version 3 of the License, or (at your option) any later version.
 //
 
-use super::super::utilities::error_to_c_string;
-use super::super::utilities::requests;
-use super::super::ClientShim;
-use super::super::Result;
-
+use failure::format_err;
+use two_party_musig2_eddsa::{
+    generate_partial_nonces, AggPublicKeyAndMusigCoeff, KeyPair, PartialSignature,
+    PublicPartialNonces, Signature,
+};
 // iOS bindings
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
 
-use two_party_musig2_eddsa::{
-    generate_partial_nonces, AggPublicKeyAndMusigCoeff, KeyPair, PartialSignature,
-    PublicPartialNonces, Signature,
+use crate::{
+    utilities::{error_to_c_string, requests},
+    ClientShim, Result,
 };
 
 #[allow(non_snake_case)]
@@ -46,7 +46,11 @@ pub fn sign(
     let server_nonces_bytes = server_nonces.serialize();
     match PublicPartialNonces::deserialize(server_nonces_bytes) {
         Some(_) => (),
-        None => return Err(failure::err_msg("Received invalid public nonces from server!")),
+        None => {
+            return Err(failure::err_msg(
+                "Received invalid public nonces from server!",
+            ))
+        }
     }
 
     // Create a partial signature
@@ -71,11 +75,16 @@ pub fn sign(
     let server_partial_sig_bytes = server_partial_sig.serialize();
     match PartialSignature::deserialize(server_partial_sig_bytes) {
         Some(_) => (),
-        None => return Err(failure::err_msg("Received invalid partial signature from server!")),
+        None => {
+            return Err(failure::err_msg(
+                "Received invalid partial signature from server!",
+            ))
+        }
     }
 
     // Aggregate the partial signatures together
-    let signature = Signature::aggregate_partial_signatures(agg_nonce, [partial_sig, server_partial_sig]);
+    let signature =
+        Signature::aggregate_partial_signatures(agg_nonce, [partial_sig, server_partial_sig]);
 
     // Make sure the signature verifies against the aggregated public key
     match signature.verify(message, agg_pubkey.aggregated_pubkey()) {
@@ -139,7 +148,7 @@ pub extern "C" fn sign_message_eddsa(
 
     let key_agg: AggPublicKeyAndMusigCoeff = serde_json::from_str(key_agg_json).unwrap();
 
-    let sig = match sign(&client_shim, &message[..], &key_pair, &key_agg, &id.to_string()) {
+    let sig = match sign(&client_shim, &message[..], &key_pair, &key_agg, id) {
         Ok(s) => s,
         Err(e) => {
             return error_to_c_string(format_err!(
