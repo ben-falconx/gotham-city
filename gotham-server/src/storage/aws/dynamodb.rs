@@ -1,9 +1,9 @@
 use super::error::*;
-use super::*;
+// BEN REMOVED: use super::*;
 use failure;
 use rusoto_dynamodb::*;
 use serde;
-use serde_json;
+// BEN REMOVED: use serde_json;
 use std;
 use std::collections::HashMap;
 use std::default::Default;
@@ -205,7 +205,7 @@ pub fn describe_table(client: &DynamoDbClient, name: &str) -> Result<TableDescri
     };
 
     match client.describe_table(describe_table_input).sync() {
-        Err(DescribeTableError::ResourceNotFound(s)) => {
+        /*BEN REMOVED Err(DescribeTableError::ResourceNotFound(s)) => {
             if s.starts_with("Requested resource not found: Table:") {
                 bail!(ErrorKind::TableNotFound(name.to_string()))
             }
@@ -214,7 +214,8 @@ pub fn describe_table(client: &DynamoDbClient, name: &str) -> Result<TableDescri
                 DescribeTableError::ResourceNotFound(s)
             ))
         }
-        Err(e) => bail!(ErrorKind::DescribeTable(e)),
+        Err(e) => bail!(ErrorKind::DescribeTable(e)),*/
+        Err(e) => bail!(DescribeTableError::ResourceNotFound(e.to_string())),
         Ok(table) => {
             if let Some(table_desc) = table.table {
                 info!("table created at {:?}", table_desc.creation_date_time);
@@ -258,19 +259,21 @@ pub fn create_table(
     read_capacity: i64,
     write_capacity: i64,
 ) -> Result<()> {
+    // BEN CHANGED
+    let prov = ProvisionedThroughput {
+        read_capacity_units: read_capacity,
+        write_capacity_units: write_capacity,
+    };
     let create_table_input = CreateTableInput {
         table_name: name.to_string(),
         attribute_definitions: attributes!("id" => "S"),
         key_schema: key_schema!("id" => "HASH"),
-        provisioned_throughput: ProvisionedThroughput {
-            read_capacity_units: read_capacity,
-            write_capacity_units: write_capacity,
-        },
+        provisioned_throughput: Some(prov),
         ..Default::default()
     };
 
     match client.create_table(create_table_input).sync() {
-        Err(CreateTableError::ResourceInUse(s)) => {
+        /*BEN REMOVED Err(CreateTableError::ResourceInUse(s)) => {
             let maybe_value = serde_json::from_str::<AWSError>(&s);
 
             if let Ok(value) = maybe_value {
@@ -281,7 +284,8 @@ pub fn create_table(
 
             bail!(ErrorKind::CreateTable(CreateTableError::ResourceInUse(s)))
         }
-        Err(e) => bail!(ErrorKind::CreateTable(e)),
+        Err(e) => bail!(ErrorKind::CreateTable(e)),*/
+        Err(e) => bail!(ErrorKind::CreateTable(CreateTableError::ResourceInUse(e.to_string()))),
         Ok(table) => {
             if let Some(table_desc) = table.table_description {
                 info!("table created at {:?}", table_desc.creation_date_time);

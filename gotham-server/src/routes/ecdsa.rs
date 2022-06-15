@@ -181,7 +181,7 @@ pub fn chain_code_first_message(
     state: State<Config>,
     claim: Claims,
     id: String,
-) -> Result<Json<(Party1FirstMessage)>> {
+) -> Result<Json<Party1FirstMessage>> {
     let (cc_party_one_first_message, cc_comm_witness, cc_ec_key_pair1) =
         chain_code::party1::ChainCode1::chain_code_first_message();
 
@@ -220,7 +220,7 @@ pub fn chain_code_second_message(
     claim: Claims,
     id: String,
     cc_party_two_first_message_d_log_proof: Json<DLogProof<GE>>,
-) -> Result<Json<(Party1SecondMessage<GE>)>> {
+) -> Result<Json<Party1SecondMessage<GE>>> {
     let cc_comm_witness: CommWitness<GE> = db::get(&state.db, &claim.sub, &id, &EcdsaStruct::CCCommWitness)?
         .ok_or(format_err!("No data for such identifier {}", id))?;
 
@@ -301,7 +301,7 @@ pub fn sign_first(
     claim: Claims,
     id: String,
     eph_key_gen_first_message_party_two: Json<party_two::EphKeyGenFirstMsg>,
-) -> Result<Json<(party_one::EphKeyGenFirstMsg)>> {
+) -> Result<Json<party_one::EphKeyGenFirstMsg>> {
     let (sign_party_one_first_message, eph_ec_key_pair_party1) = MasterKey1::sign_first_message();
 
     db::insert(
@@ -337,7 +337,7 @@ pub fn sign_second(
     claim: Claims,
     id: String,
     request: Json<SignSecondMsgRequest>,
-) -> Result<Json<(party_one::SignatureRecid)>> {
+) -> Result<Json<party_one::SignatureRecid>> {
     let master_key: MasterKey1 = db::get(&state.db, &claim.sub, &id, &EcdsaStruct::Party1MasterKey)?
         .ok_or(format_err!("No data for such identifier {}", id))?;
 
@@ -378,7 +378,7 @@ pub fn rotate_first(
     state: State<Config>,
     claim: Claims,
     id: String,
-) -> Result<Json<(coin_flip_optimal_rounds::Party1FirstMessage<GE>)>> {
+) -> Result<Json<coin_flip_optimal_rounds::Party1FirstMessage<GE>>> {
     let (party1_coin_flip_first_message, m1, r1) = Rotation1::key_rotate_first_message();
     db::insert(
         &state.db,
@@ -409,10 +409,10 @@ pub fn rotate_second(
     party2_first_message: Json<coin_flip_optimal_rounds::Party2FirstMessage<GE>>,
 ) -> Result<
     Json<
-        ((
+        (
             coin_flip_optimal_rounds::Party1SecondMessage<GE>,
             party1::RotationParty1Message1,
-        )),
+        ),
     >,
 > {
     let party_one_master_key = get_mk(&state, claim.clone(), &id)?;
@@ -446,7 +446,7 @@ pub fn rotate_second(
 
 
 #[post("/ecdsa/<id>/recover", format = "json")]
-pub fn recover(state: State<Config>, claim: Claims, id: String) -> Result<Json<(u32)>> {
+pub fn recover(state: State<Config>, claim: Claims, id: String) -> Result<Json<u32>> {
     let pos_old: u32 = db::get(&state.db, &claim.sub, &id, &EcdsaStruct::POS)?
         .ok_or(format_err!("No data for such identifier {}", id))?;
     Ok(Json(pos_old))

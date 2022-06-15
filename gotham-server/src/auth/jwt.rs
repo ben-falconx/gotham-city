@@ -6,7 +6,7 @@
 // License as published by the Free Software Foundation, either
 // version 3 of the License, or (at your option) any later version.
 //
-use super::super::jwt::{decode, decode_header, Algorithm, Header, Validation};
+use super::super::jwt::{decode, decode_header, DecodingKey, Algorithm, Header, Validation};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {
@@ -21,17 +21,19 @@ pub fn get_claims(
     secret: &[u8],
     algorithms: Vec<Algorithm>,
 ) -> Result<Claims, ()> {
-    let mut validation = Validation {
-        iss: Some(issuer.to_string()),
+    /*BEN REMOVED let mut validation = Validation {
+        iss: Some(HashSet::from([issuer.to_string()])),
         ..Validation::default()
-    };
+    };*/
+    let mut validation = Validation::new(Algorithm::HS256);
+    validation.set_issuer(&[issuer]);
 
     validation.algorithms = algorithms;
 
     // Setting audience
-    validation.set_audience(audience);
+    validation.set_audience(&[audience]);
 
-    let token_data = match decode::<Claims>(token, secret, &validation) {
+    let token_data = match decode::<Claims>(token, &DecodingKey::from_secret(secret), &validation) {
         Ok(c) => c,
         Err(_) => return Err(()),
     };
